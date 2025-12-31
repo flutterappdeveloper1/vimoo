@@ -139,124 +139,342 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vimo Pro - Connect</title>
 
-        let currentUser = null;
-        let activePeerID = null;
-        let myPeer = null;
-        let currentCall = null;
-        let localStream = null;
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <!-- PeerJS -->
+    <script src="https://unpkg.com/peerjs@1.3.1/dist/peerjs.min.js"></script>
 
-        // অ্যাপ শুরু করার ফাংশন
-        async function initApp() {
+    <style>
+        :root { --p: #0084ff; --s: #28a745; --d: #dc3545; --bg: #f0f2f5; }
+        body { font-family: sans-serif; margin: 0; background: var(--bg); overflow: hidden; }
+        button { cursor: pointer; border-radius: 5px; border: none; }
+        
+        /* Auth UI */
+        #auth-screen { height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--p); }
+        .card { background: white; padding: 30px; border-radius: 15px; width: 300px; text-align: center; }
+        input { width: 90%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 5px; }
+
+        /* App Layout */
+        #app-screen { display: none; height: 100vh; flex-direction: column; }
+        header { background: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; }
+        .main { display: flex; flex: 1; overflow: hidden; }
+        
+        /* Sidebar */
+        #sidebar { width: 280px; background: white; border-right: 1px solid #ddd; overflow-y: auto; }
+        .u-item { padding: 15px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .u-item:hover { background: #f9f9f9; }
+        .u-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #eee; }
+
+        /* Chat */
+        #chat-area { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; }
+        #msgs { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .msg { padding: 8px 12px; border-radius: 10px; max-width: 70%; font-size: 15px; }
+        .msg img { max-width: 200px; border-radius: 5px; display: block; margin-top: 5px; }
+        .sent { background: #dcf8c6; align-self: flex-end; }
+        .received { background: white; align-self: flex-start; }
+
+        .input-bar { background: white; padding: 10px; display: flex; gap: 10px; align-items: center; }
+        
+        /* Calling Modal */
+        #call-modal { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); 
+            display: none; flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 1000;
+        }
+        #video-grid { width: 100%; height: 100%; position: relative; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        #local-v { width: 120px; height: 160px; position: absolute; top: 20px; right: 20px; border: 2px solid white; }
+        .call-ctrls { position: absolute; bottom: 30px; display: flex; gap: 20px; }
+
+        /* Incoming Modal */
+        #incoming-modal {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 300px; 
+            background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            display: none; text-align: center; z-index: 2000;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ১. লগইন/সাইনআপ স্ক্রিন -->
+    <div id="auth-screen">
+        <div class="card">
+            <h2>Vimo Pro</h2>
+            <input type="text" id="user-id" placeholder="Username (Display Name)">
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="pass" placeholder="Password">
+            <input type="file" id="profile-pic" accept="image/*" style="font-size: 12px;">
+            <p style="font-size: 11px;">Profile Picture (Optional)</p>
+            <button onclick="handleAuth('up')" style="background: var(--s); color: white; padding: 10px 20px;">Sign Up</button>
+            <button onclick="handleAuth('in')" style="background: var(--p); color: white; padding: 10px 20px;">Login</button>
+        </div>
+    </div>
+
+    <!-- ২. মেইন অ্যাপ -->
+    <div id="app-screen">
+        <header>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <img id="my-avatar" class="u-img">
+                <b id="my-name"></b>
+            </div>
+            <button onclick="location.reload()" style="background: var(--d); color: white; padding: 5px 10px;">Logout</button>
+        </header>
+        <div class="main">
+            <div id="sidebar"></div>
+            <div id="chat-area">
+                <div id="msgs"></div>
+                <div class="input-bar" id="input-ui" style="display: none;">
+                    <button onclick="triggerImg()">🖼️</button>
+                    <input type="file" id="img-input" hidden accept="image/*" onchange="sendImg(this)">
+                    <button onclick="startCall('audio')">📞</button>
+                    <button onclick="startCall('video')">📹</button>
+                    <input type="text" id="m-input" placeholder="Type message...">
+                    <button onclick="sendMsg()" style="background: var(--p); color: white; padding: 10px;">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ৩. কলিং UI -->
+    <div id="call-modal">
+        <div id="video-grid">
+            <video id="remote-v" autoplay playsinline></video>
+            <video id="local-v" autoplay muted playsinline></video>
+        </div>
+        <div class="call-ctrls">
+            <button onclick="toggleCam()" id="cam-btn" style="padding: 15px; background: grey;">📷 Toggle Camera</button>
+            <button onclick="endCall()" style="padding: 15px 30px; background: var(--d); color: white; border-radius: 50px;">End Call</button>
+        </div>
+    </div>
+
+    <!-- ৪. ইনকামিং কল রিংিং UI -->
+    <div id="incoming-modal">
+        <h3 id="caller-name">Incoming Call...</h3>
+        <p id="call-type-label"></p>
+        <div style="display: flex; justify-content: space-around;">
+            <button onclick="acceptCall()" style="background: var(--s); color: white; padding: 10px 20px;">Accept</button>
+            <button onclick="rejectCall()" style="background: var(--d); color: white; padding: 10px 20px;">Reject</button>
+        </div>
+    </div>
+
+    <audio id="ringtone" src="https://www.soundjay.com/phone/phone-calling-1.mp3" loop></audio>
+
+    <script>
+        // --- 🔴 এখানে আপনার Firebase Config দিন 🔴 ---
+        const firebaseConfig = {
+  apiKey: "AIzaSyDCKr5EaLVrDkV4TG00ortCiTWIAo5zgjc",
+  authDomain: "vimo-d453c.firebaseapp.com",
+  databaseURL: "https://vimo-d453c-default-rtdb.firebaseio.com",
+  projectId: "vimo-d453c",
+  storageBucket: "vimo-d453c.firebasestorage.app",
+  messagingSenderId: "258135136638",
+  appId: "1:258135136638:web:2f0e0086213343177bbb2f",
+  measurementId: "G-6WLGSWKVW9"
+};
+        // --------------------------------------------
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+        const storage = firebase.storage();
+
+        let currentUser, myPeer, activeChatID, currentCall, localStream, peerID;
+        const ringtone = document.getElementById('ringtone');
+
+        // --- ১. অথেন্টিকেশন (Sign Up & Login) ---
+        async function handleAuth(type) {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('pass').value;
+            const name = document.getElementById('user-id').value;
+            const file = document.getElementById('profile-pic').files[0];
+
+            if(!email || !pass) return alert("Email/Pass required");
+
             try {
-                // ১. পারমিশন চাওয়া
-                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                
-                // ২. অটোমেটিক অ্যাকাউন্ট তৈরি (Anonymous)
-                const res = await auth.signInAnonymously();
-                currentUser = res.user;
-
-                document.getElementById('setup-overlay').style.display = 'none';
-                document.getElementById('app-container').style.display = 'flex';
-                document.getElementById('my-id').innerText = "ID: " + currentUser.uid.substring(0,6);
-
-                // ৩. ডাটাবেজে ইউজার এন্ট্রি
-                const userRef = db.ref('online_users/' + currentUser.uid);
-                userRef.set({
-                    uid: currentUser.uid,
-                    lastSeen: Date.now()
-                });
-                userRef.onDisconnect().remove();
-
-                setupPeer();
-                listenUsers();
-            } catch (err) {
-                alert("Permission Denied! Please allow camera/mic to use Vimo.");
-                console.error(err);
-            }
-        }
-
-        // PeerJS সেটআপ
-        function setupPeer() {
-            myPeer = new Peer(currentUser.uid);
-
-            myPeer.on('call', call => {
-                if(confirm("Incoming Call... Accept?")) {
-                    call.answer(localStream);
-                    handleCall(call);
+                let res;
+                if(type === 'up') {
+                    res = await auth.createUserWithEmailAndPassword(email, pass);
+                    let url = "";
+                    if(file) {
+                        const sRef = storage.ref('avatars/' + res.user.uid);
+                        await sRef.put(file);
+                        url = await sRef.getDownloadURL();
+                    }
+                    await db.ref('users/' + res.user.uid).set({ name, email, avatar: url, uid: res.user.uid });
+                } else {
+                    res = await auth.signInWithEmailAndPassword(email, pass);
                 }
-            });
+            } catch (e) { alert(e.message); }
         }
 
-        // ইউজার লিস্ট দেখা
-        function listenUsers() {
-            db.ref('online_users').on('value', snap => {
-                const list = document.getElementById('user-list');
-                list.innerHTML = '';
-                snap.forEach(child => {
-                    if(child.key !== currentUser.uid) {
+        auth.onAuthStateChanged(user => {
+            if(user) {
+                currentUser = user;
+                db.ref('users/' + user.uid).once('value', s => {
+                    const data = s.val();
+                    document.getElementById('my-name').innerText = data.name;
+                    document.getElementById('my-avatar').src = data.avatar || 'https://via.placeholder.com/40';
+                    initApp();
+                });
+            }
+        });
+
+        function initApp() {
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('app-screen').style.display = 'flex';
+            
+            myPeer = new Peer(currentUser.uid);
+            
+            // ইউজার লিস্ট লোড
+            db.ref('users').on('value', s => {
+                const side = document.getElementById('sidebar');
+                side.innerHTML = "";
+                s.forEach(u => {
+                    if(u.key !== currentUser.uid) {
+                        const d = u.val();
                         const div = document.createElement('div');
-                        div.className = 'user-card';
-                        div.innerHTML = `<div class="online-dot"></div> User-${child.key.substring(0,5)}`;
-                        div.onclick = () => selectUser(child.key);
-                        list.appendChild(div);
+                        div.className = 'u-item';
+                        div.innerHTML = `<img class="u-img" src="${d.avatar || 'https://via.placeholder.com/40'}"> <b>${d.name}</b>`;
+                        div.onclick = () => openChat(d);
+                        side.appendChild(div);
                     }
                 });
             });
+
+            // ইনকামিং কল সিগন্যাল লিসেনার
+            db.ref('calls/' + currentUser.uid).on('value', s => {
+                const data = s.val();
+                if(data && data.status === 'ringing') {
+                    showIncoming(data);
+                } else if (!data) {
+                    hideIncoming();
+                }
+            });
+
+            myPeer.on('call', call => {
+                currentCall = call;
+            });
         }
 
-        // চ্যাট ইউজার সিলেক্ট করা
-        function selectUser(id) {
-            activePeerID = id;
-            document.getElementById('bottom-bar').style.display = 'flex';
-            const chatID = [currentUser.uid, id].sort().join('_');
+        // --- ২. চ্যাট এবং ইমেজ শেয়ারিং ---
+        function openChat(user) {
+            peerID = user.uid;
+            document.getElementById('input-ui').style.display = 'flex';
+            const chatID = [currentUser.uid, user.uid].sort().join('_');
+            activeChatID = chatID;
 
-            db.ref('chats/' + chatID).on('value', snap => {
-                const box = document.getElementById('messages');
-                box.innerHTML = '';
-                snap.forEach(msg => {
-                    const data = msg.val();
-                    const d = document.createElement('div');
-                    d.className = `msg ${data.sender === currentUser.uid ? 'sent' : 'received'}`;
-                    d.innerText = data.text;
-                    box.appendChild(d);
+            db.ref('msgs/' + chatID).on('value', s => {
+                const box = document.getElementById('msgs');
+                box.innerHTML = "";
+                s.forEach(m => {
+                    const d = m.val();
+                    const div = document.createElement('div');
+                    div.className = `msg ${d.sender === currentUser.uid ? 'sent' : 'received'}`;
+                    if(d.type === 'img') div.innerHTML = `<img src="${d.url}">`;
+                    else div.innerText = d.text;
+                    box.appendChild(div);
                 });
                 box.scrollTop = box.scrollHeight;
             });
         }
 
-        // মেসেজ পাঠানো
         function sendMsg() {
-            const text = document.getElementById('msg-input').value;
-            if(!text || !activePeerID) return;
-            const chatID = [currentUser.uid, activePeerID].sort().join('_');
-            db.ref('chats/' + chatID).push({ sender: currentUser.uid, text: text });
-            document.getElementById('msg-input').value = '';
+            const t = document.getElementById('m-input').value;
+            if(!t) return;
+            db.ref('msgs/' + activeChatID).push({ sender: currentUser.uid, text: t, type: 'text' });
+            document.getElementById('m-input').value = "";
         }
 
-        // কল করা
-        function makeCall(type) {
-            if(!activePeerID) return;
-            const call = myPeer.call(activePeerID, localStream);
-            handleCall(call);
+        function triggerImg() { document.getElementById('img-input').click(); }
+
+        async function sendImg(input) {
+            const file = input.files[0];
+            if(!file) return;
+            const ref = storage.ref('chats/' + Date.now());
+            await ref.put(file);
+            const url = await ref.getDownloadURL();
+            db.ref('msgs/' + activeChatID).push({ sender: currentUser.uid, url: url, type: 'img' });
         }
 
-        function handleCall(call) {
-            currentCall = call;
-            document.getElementById('call-ui').style.display = 'flex';
-            document.getElementById('local-video').srcObject = localStream;
+        // --- ৩. কলিং সিস্টেম (Audio/Video + Ringing) ---
+        async function startCall(type) {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            if(type === 'audio') localStream.getVideoTracks()[0].enabled = false;
             
-            call.on('stream', remoteStream => {
-                document.getElementById('remote-video').srcObject = remoteStream;
+            // সিগন্যাল পাঠানো
+            db.ref('calls/' + peerID).set({
+                from: currentUser.uid,
+                fromName: document.getElementById('my-name').innerText,
+                type: type,
+                status: 'ringing'
             });
 
-            call.on('close', () => endCall());
+            const call = myPeer.call(peerID, localStream);
+            showCallUI(call);
+        }
+
+        function showIncoming(data) {
+            ringtone.play();
+            document.getElementById('incoming-modal').style.display = 'block';
+            document.getElementById('caller-name').innerText = data.fromName;
+            document.getElementById('call-type-label').innerText = data.type === 'video' ? "Video Call..." : "Audio Call...";
+        }
+
+        function hideIncoming() {
+            ringtone.pause();
+            ringtone.currentTime = 0;
+            document.getElementById('incoming-modal').style.display = 'none';
+        }
+
+        async function acceptCall() {
+            hideIncoming();
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            
+            // যদি অডিও কল হয়, ক্যামেরা অফ করে রাখা
+            db.ref('calls/' + currentUser.uid).once('value', s => {
+                if(s.val().type === 'audio') localStream.getVideoTracks()[0].enabled = false;
+            });
+
+            currentCall.answer(localStream);
+            showCallUI(currentCall);
+            db.ref('calls/' + currentUser.uid).remove();
+        }
+
+        function rejectCall() {
+            db.ref('calls/' + currentUser.uid).remove();
+            hideIncoming();
+        }
+
+        function showCallUI(call) {
+            currentCall = call;
+            document.getElementById('call-modal').style.display = 'flex';
+            document.getElementById('local-v').srcObject = localStream;
+            call.on('stream', s => {
+                document.getElementById('remote-v').srcObject = s;
+            });
+        }
+
+        function toggleCam() {
+            const v = localStream.getVideoTracks()[0];
+            v.enabled = !v.enabled;
+            document.getElementById('cam-btn').style.background = v.enabled ? "green" : "grey";
         }
 
         function endCall() {
             if(currentCall) currentCall.close();
-            document.getElementById('call-ui').style.display = 'none';
+            db.ref('calls/' + peerID).remove();
+            location.reload();
         }
+
     </script>
 </body>
 </html>
