@@ -3,362 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vimo - Instant Connect</title>
-
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <!-- PeerJS for Calling -->
-    <script src="https://unpkg.com/peerjs@1.3.1/dist/peerjs.min.js"></script>
-
-    <style>
-        :root { 
-            --primary: #0084ff; --success: #28a745; --danger: #dc3545; 
-            --bg: #f0f2f5; --white: #ffffff;
-        }
-
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; overflow: hidden; }
-
-        /* Permission Overlay */
-        #setup-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--primary);
-            color: white; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 10000; text-align: center; padding: 20px; box-sizing: border-box;
-        }
-
-        .btn-start { 
-            background: white; color: var(--primary); padding: 15px 40px; border: none; 
-            border-radius: 30px; font-weight: bold; font-size: 18px; cursor: pointer; margin-top: 20px;
-        }
-
-        /* App Layout */
-        #app-container { display: none; height: 100vh; flex-direction: column; }
-        header { 
-            background: var(--white); padding: 10px 20px; display: flex; justify-content: space-between; 
-            align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-
-        .main-content { display: flex; flex: 1; overflow: hidden; }
-            /* Sidebar (User List) */
-        #sidebar { width: 300px; background: white; border-right: 1px solid #ddd; overflow-y: auto; }
-        .user-card { 
-            padding: 15px; border-bottom: 1px solid #f0f0f0; cursor: pointer; 
-            display: flex; align-items: center; gap: 10px; transition: 0.2s;
-        }
-        .user-card:hover { background: #f0f7ff; }
-        .online-dot { width: 12px; height: 12px; background: var(--success); border-radius: 50%; border: 2px solid white; }
-
-        /* Chat Area */
-        #chat-window { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; }
-        #messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-        .msg { padding: 10px 15px; border-radius: 15px; max-width: 75%; font-size: 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-        .sent { background: #dcf8c6; align-self: flex-end; border-bottom-right-radius: 2px; }
-        .received { background: white; align-self: flex-start; border-bottom-left-radius: 2px; }
-
-        .input-bar { padding: 10px; background: white; display: flex; gap: 10px; align-items: center; }
-        .input-bar input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 25px; outline: none; }
-        .action-btn { background: #eee; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 18px; }
-
-        /* Calling Screen */
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
-    <!-- PeerJS -->
-    <script src="https://unpkg.com/peerjs@1.3.1/dist/peerjs.min.js"></script>
-
-    <style>
-        :root { --p: #0084ff; --s: #28a745; --d: #dc3545; --bg: #f0f2f5; }
-        body { font-family: sans-serif; margin: 0; background: var(--bg); overflow: hidden; }
-        button { cursor: pointer; border-radius: 5px; border: none; }
-        
-        /* Auth UI */
-        #auth-screen { height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--p); }
-        .card { background: white; padding: 30px; border-radius: 15px; width: 300px; text-align: center; }
-        input { width: 90%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 5px; }
-
-        /* App Layout */
-        #app-screen { display: none; height: 100vh; flex-direction: column; }
-        header { background: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; }
-        .main { display: flex; flex: 1; overflow: hidden; }
-        
-        /* Sidebar */
-        #sidebar { width: 280px; background: white; border-right: 1px solid #ddd; overflow-y: auto; }
-        .u-item { padding: 15px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; cursor: pointer; }
-        .u-item:hover { background: #f9f9f9; }
-        .u-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #eee; }
-
-        /* Chat */
-        #chat-area { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; }
-        #msgs { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .msg { padding: 8px 12px; border-radius: 10px; max-width: 70%; font-size: 15px; }
-        .msg img { max-width: 200px; border-radius: 5px; display: block; margin-top: 5px; }
-        .sent { background: #dcf8c6; align-self: flex-end; }
-        .received { background: white; align-self: flex-start; }
-
-        .input-bar { background: white; padding: 10px; display: flex; gap: 10px; align-items: center; }
-        
-        /* Calling Modal */
-        #call-modal { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); 
-            display: none; flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 1000;
-        }
-        #video-grid { width: 100%; height: 100%; position: relative; }
-        video { width: 100%; height: 100%; object-fit: cover; }
-        #local-v { width: 120px; height: 160px; position: absolute; top: 20px; right: 20px; border: 2px solid white; }
-        .call-ctrls { position: absolute; bottom: 30px; display: flex; gap: 20px; }
-
-        /* Incoming Modal */
-        #incoming-modal {
-            position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 300px; 
-            background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.3);
-            display: none; text-align: center; z-index: 2000;
-        }
-    </style>
-</head>
-<body>
-
-    <!-- ১. লগইন/সাইনআপ স্ক্রিন -->
-    <div id="auth-screen">
-        <div class="card">
-            <h2>Vimo Pro</h2>
-            <input type="text" id="user-id" placeholder="Username (Display Name)">
-            <input type="email" id="email" placeholder="Email">
-            <input type="password" id="pass" placeholder="Password">
-            <input type="file" id="profile-pic" accept="image/*" style="font-size: 12px;">
-            <p style="font-size: 11px;">Profile Picture (Optional)</p>
-            <button onclick="handleAuth('up')" style="background: var(--s); color: white; padding: 10px 20px;">Sign Up</button>
-            <button onclick="handleAuth('in')" style="background: var(--p); color: white; padding: 10px 20px;">Login</button>
-        </div>
-    </div>
-
-    <!-- ২. মেইন অ্যাপ -->
-    <div id="app-screen">
-        <header>
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <img id="my-avatar" class="u-img">
-                <b id="my-name"></b>
-            </div>
-            <button onclick="location.reload()" style="background: var(--d); color: white; padding: 5px 10px;">Logout</button>
-        </header>
-        <div class="main">
-            <div id="sidebar"></div>
-            <div id="chat-area">
-                <div id="msgs"></div>
-                <div class="input-bar" id="input-ui" style="display: none;">
-                    <button onclick="triggerImg()">🖼️</button>
-                    <input type="file" id="img-input" hidden accept="image/*" onchange="sendImg(this)">
-                    <button onclick="startCall('audio')">📞</button>
-                    <button onclick="startCall('video')">📹</button>
-                    <input type="text" id="m-input" placeholder="Type message...">
-                    <button onclick="sendMsg()" style="background: var(--p); color: white; padding: 10px;">Send</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ৩. কলিং UI -->
-    <div id="call-modal">
-        <div id="video-grid">
-            <video id="remote-v" autoplay playsinline></video>
-            <video id="local-v" autoplay muted playsinline></video>
-        </div>
-        <div class="call-ctrls">
-            <button onclick="toggleCam()" id="cam-btn" style="padding: 15px; background: grey;">📷 Toggle Camera</button>
-            <button onclick="endCall()" style="padding: 15px 30px; background: var(--d); color: white; border-radius: 50px;">End Call</button>
-        </div>
-    </div>
-
-    <!-- ৪. ইনকামিং কল রিংিং UI -->
-    <div id="incoming-modal">
-        <h3 id="caller-name">Incoming Call...</h3>
-        <p id="call-type-label"></p>
-        <div style="display: flex; justify-content: space-around;">
-            <button onclick="acceptCall()" style="background: var(--s); color: white; padding: 10px 20px;">Accept</button>
-            <button onclick="rejectCall()" style="background: var(--d); color: white; padding: 10px 20px;">Reject</button>
-        </div>
-    </div>
-
-    <audio id="ringtone" src="https://www.soundjay.com/phone/phone-calling-1.mp3" loop></audio>
-
-    <script>
-        // --- 🔴 এখানে আপনার Firebase Config দিন 🔴 ---
-        const firebaseConfig = {
-  apiKey: "AIzaSyDCKr5EaLVrDkV4TG00ortCiTWIAo5zgjc",
-  authDomain: "vimo-d453c.firebaseapp.com",
-  databaseURL: "https://vimo-d453c-default-rtdb.firebaseio.com",
-  projectId: "vimo-d453c",
-  storageBucket: "vimo-d453c.firebasestorage.app",
-  messagingSenderId: "258135136638",
-  appId: "1:258135136638:web:2f0e0086213343177bbb2f",
-  measurementId: "G-6WLGSWKVW9"
-};
-        // --------------------------------------------
-
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.database();
-        const storage = firebase.storage();
-
-        let currentUser, myPeer, activeChatID, currentCall, localStream, peerID;
-        const ringtone = document.getElementById('ringtone');
-
-        // --- ১. অথেন্টিকেশন (Sign Up & Login) ---
-        async function handleAuth(type) {
-            const email = document.getElementById('email').value;
-            const pass = document.getElementById('pass').value;
-            const name = document.getElementById('user-id').value;
-            const file = document.getElementById('profile-pic').files[0];
-
-            if(!email || !pass) return alert("Email/Pass required");
-
-            try {
-                let res;
-                if(type === 'up') {
-                    res = await auth.createUserWithEmailAndPassword(email, pass);
-                    let url = "";
-                    if(file) {
-                        const sRef = storage.ref('avatars/' + res.user.uid);
-                        await sRef.put(file);
-                        url = await sRef.getDownloadURL();
-                    }
-                    await db.ref('users/' + res.user.uid).set({ name, email, avatar: url, uid: res.user.uid });
-                } else {
-                    res = await auth.signInWithEmailAndPassword(email, pass);
-                }
-            } catch (e) { alert(e.message); }
-        }
-
-        auth.onAuthStateChanged(user => {
-            if(user) {
-                currentUser = user;
-                db.ref('users/' + user.uid).once('value', s => {
-                    const data = s.val();
-                    document.getElementById('my-name').innerText = data.name;
-                    document.getElementById('my-avatar').src = data.avatar || 'https://via.placeholder.com/40';
-                    initApp();
-                });
-            }
-        });
-
-        function initApp() {
-            document.getElementById('auth-screen').style.display = 'none';
-            document.getElementById('app-screen').style.display = 'flex';
-            
-            myPeer = new Peer(currentUser.uid);
-            
-            // ইউজার লিস্ট লোড
-            db.ref('users').on('value', s => {
-                const side = document.getElementById('sidebar');
-                side.innerHTML = "";
-                s.forEach(u => {
-                    if(u.key !== currentUser.uid) {
-                        const d = u.val();
-                        const div = document.createElement('div');
-                        div.className = 'u-item';
-                        div.innerHTML = `<img class="u-img" src="${d.avatar || 'https://via.placeholder.com/40'}"> <b>${d.name}</b>`;
-                        div.onclick = () => openChat(d);
-                        side.appendChild(div);
-                    }
-                });
-            });
-
-            // ইনকামিং কল সিগন্যাল লিসেনার
-            db.ref('calls/' + currentUser.uid).on('value', s => {
-                const data = s.val();
-                if(data && data.status === 'ringing') {
-                    showIncoming(data);
-                } else if (!data) {
-                    hideIncoming();
-                }
-            });
-
-            myPeer.on('call', call => {
-                currentCall = call;
-            });
-        }
-
-        // --- ২. চ্যাট এবং ইমেজ শেয়ারিং ---
-        function openChat(user) {
-            peerID = user.uid;
-            document.getElementById('input-ui').style.display = 'flex';
-            const chatID = [currentUser.uid, user.uid].sort().join('_');
-            activeChatID = chatID;
-
-            db.ref('msgs/' + chatID).on('value', s => {
-                const box = document.getElementById('msgs');
-                box.innerHTML = "";
-                s.forEach(m => {
-                    const d = m.val();
-                    const div = document.createElement('div');
-                    div.className = `msg ${d.sender === currentUser.uid ? 'sent' : 'received'}`;
-                    if(d.type === 'img') div.innerHTML = `<img src="${d.url}">`;
-                    else div.innerText = d.text;
-                    box.appendChild(div);
-                });
-                box.scrollTop = box.scrollHeight;
-            });
-        }
-
-        function sendMsg() {
-            const t = document.getElementById('m-input').value;
-            if(!t) return;
-            db.ref('msgs/' + activeChatID).push({ sender: currentUser.uid, text: t, type: 'text' });
-            document.getElementById('m-input').value = "";
-        }
-
-        function triggerImg() { document.getElementById('img-input').click(); }
-
-        async function sendImg(input) {
-            const file = input.files[0];
-            if(!file) return;
-            const ref = storage.ref('chats/' + Date.now());
-            await ref.put(file);
-            const url = await ref.getDownloadURL();
-            db.ref('msgs/' + activeChatID).push({ sender: currentUser.uid, url: url, type: 'img' });
-        }
-
-        // --- ৩. কলিং সিস্টেম (Audio/Video + Ringing) ---
-        async function startCall(type) {
-            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            if(type === 'audio') localStream.getVideoTracks()[0].enabled = false;
-            
-            // সিগন্যাল পাঠানো
-            db.ref('calls/' + peerID).set({
-                from: currentUser.uid,
-                fromName: document.getElementById('my-name').innerText,
-                type: type,
-                status: 'ringing'
-            });
-
-            const call = myPeer.call(peerID, localStream);
-            showCallUI(call);
-        }
-
-        function showIncoming(data) {
-            ringtone.play();
-            document.getElementById('incoming-modal').style.display = 'block';
-            document.getElementById('caller-name').innerText = data.fromName;
-            document.getElementById('call-type-label').innerText = data.type === 'video' ? "Video Call..." : "Audio Call...";
-        }
-
-        function hideIncoming() {
-            ringtone.pause();
-            ringtone.currentTime = 0;
-            document.getElementById('incoming-modal').style.display = 'none';
-        }
-
-        async function acceptCall() {
-            hideIncoming();
-            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            
-            // যদি অডিও কল হয়, ক্যামেরা অফ করে রাখা
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vimo - Chat & Call</title>
+    <title>Vimo Pro - Final Update</title>
 
     <!-- Firebase & PeerJS SDKs -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -373,11 +18,12 @@
         /* Auth UI */
         #auth-container { height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--primary); }
         .auth-card { background: white; padding: 30px; border-radius: 15px; width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; }
-        input { width: 90%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; }
+        input { width: 90%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
         button { cursor: pointer; border: none; border-radius: 8px; font-weight: bold; transition: 0.3s; }
-        .btn-main { background: var(--primary); color: white; width: 100%; padding: 12px; margin-top: 10px; }
+        .btn-main { background: var(--primary); color: white; width: 100%; padding: 12px; margin-top: 10px; font-size: 16px; }
+        .btn-main:hover { opacity: 0.9; }
 
-        /* Main App Layout */
+        /* App Layout */
         #app-container { display: none; height: 100vh; flex-direction: column; }
         header { background: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; }
         .main-view { display: flex; flex: 1; overflow: hidden; }
@@ -387,9 +33,8 @@
         .user-item { padding: 15px; border-bottom: 1px solid #f9f9f9; cursor: pointer; display: flex; align-items: center; gap: 10px; }
         .user-item:hover { background: #f0f7ff; }
         .avatar { width: 40px; height: 40px; border-radius: 50%; background: #ddd; object-fit: cover; }
-        .status-online { width: 10px; height: 10px; background: var(--success); border-radius: 50%; }
 
-        /* Chat Area */
+        /* Chat Window */
         #chat-window { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; position: relative; }
         #messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
         .msg { padding: 10px 15px; border-radius: 15px; max-width: 70%; font-size: 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
@@ -398,37 +43,35 @@
         .msg img { max-width: 100%; border-radius: 8px; margin-top: 5px; cursor: pointer; }
 
         .input-bar { background: white; padding: 12px; display: flex; gap: 10px; align-items: center; }
-        .input-bar input { flex: 1; margin: 0; border-radius: 20px; }
+        .input-bar input { flex: 1; border-radius: 20px; padding: 10px; border: 1px solid #eee; }
 
         /* Calling Interface */
-        #call-overlay { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; 
-            z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center;
-        }
+        #call-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center; }
         #remote-video { width: 100%; height: 100%; object-fit: cover; }
-        #local-video { width: 120px; height: 160px; position: absolute; top: 20px; right: 20px; border: 2px solid white; border-radius: 10px; z-index: 1001; }
+        #local-video { width: 100px; height: 140px; position: absolute; top: 20px; right: 20px; border: 2px solid white; border-radius: 10px; z-index: 1001; }
         .call-actions { position: absolute; bottom: 50px; display: flex; gap: 20px; z-index: 1002; }
-        .round-btn { width: 60px; height: 60px; border-radius: 50%; font-size: 24px; color: white; display: flex; align-items: center; justify-content: center; }
+        .round-btn { width: 60px; height: 60px; border-radius: 50%; font-size: 24px; color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
         /* Ringing UI */
-        #ringing-ui {
-            position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 350px;
-            background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 25px rgba(0,0,0,0.3);
-            display: none; text-align: center; z-index: 2000;
-        }
+        #ringing-ui { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 350px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 25px rgba(0,0,0,0.3); display: none; text-align: center; z-index: 2000; }
     </style>
 </head>
 <body>
 
-    <!-- ১. অথেন্টিকেশন -->
+    <!-- ১. অথেন্টিকেশন (লগইন/সাইনআপ) -->
     <div id="auth-container">
         <div class="auth-card">
-            <h2 style="color: var(--primary);">Vimo Connect</h2>
-            <input type="text" id="reg-name" placeholder="User Display Name">
-            <input type="email" id="reg-email" placeholder="Email Address">
-            <input type="password" id="reg-pass" placeholder="Password">
-            <button class="btn-main" onclick="handleAuth('signup')">Create Account</button>
-            <button class="btn-main" style="background:none; color:var(--primary);" onclick="handleAuth('login')">Already have an account? Login</button>
+            <h2 id="auth-header" style="color: var(--primary);">Vimo Login</h2>
+            <div id="signup-fields" style="display: none;">
+                <input type="text" id="auth-name" placeholder="Full Name">
+            </div>
+            <input type="email" id="auth-email" placeholder="Email Address">
+            <input type="password" id="auth-pass" placeholder="Password">
+            
+            <button class="btn-main" id="primary-btn" onclick="processAuth()">Login</button>
+            <p id="toggle-text" style="font-size: 13px; margin-top: 15px; color: #666; cursor: pointer;" onclick="toggleAuthMode()">
+                Don't have an account? Sign Up
+            </p>
         </div>
     </div>
 
@@ -436,10 +79,10 @@
     <div id="app-container">
         <header>
             <div style="display: flex; align-items: center; gap: 10px;">
-                <img id="my-avatar" class="avatar" src="https://via.placeholder.com/40">
-                <b id="my-display-name">Vimo User</b>
+                <img class="avatar" src="https://via.placeholder.com/40">
+                <b id="display-name-header">User</b>
             </div>
-            <button onclick="logout()" style="background:var(--danger); color:white; padding:5px 12px;">Logout</button>
+            <button onclick="logout()" style="background:var(--danger); color:white; padding:5px 12px; border-radius: 5px;">Logout</button>
         </header>
 
         <div class="main-view">
@@ -451,21 +94,20 @@
             <div id="chat-window">
                 <div id="messages"></div>
                 <div class="input-bar" id="chat-controls" style="display:none;">
-                    <button onclick="document.getElementById('file-input').click()" style="font-size:20px;">🖼️</button>
+                    <button onclick="document.getElementById('file-input').click()" style="font-size:20px; background:none;">🖼️</button>
                     <input type="file" id="file-input" hidden accept="image/*" onchange="shareFile(this)">
-                    <button onclick="startCall('audio')" style="font-size:20px;">📞</button>
-                    <button onclick="startCall('video')" style="font-size:20px;">📹</button>
+                    <button onclick="startCall('audio')" style="font-size:20px; background:none;">📞</button>
+                    <button onclick="startCall('video')" style="font-size:20px; background:none;">📹</button>
                     <input type="text" id="msg-input" placeholder="Type a message...">
-                    <button onclick="sendText()" class="btn-main" style="width:auto; margin:0; padding:10px 20px;">Send</button>
+                    <button onclick="sendText()" style="background:var(--primary); color:white; padding:8px 15px; border-radius:15px;">Send</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ৩. রিংটোন এবং ইনকামিং কল UI -->
+    <!-- ৩. রিংটোন UI -->
     <div id="ringing-ui">
         <h3 id="caller-name">Incoming Call...</h3>
-        <p id="call-type">Someone is calling you</p>
         <div style="display:flex; justify-content:space-around; margin-top:20px;">
             <button onclick="acceptCall()" style="background:var(--success); color:white; padding:12px 25px;">Accept</button>
             <button onclick="rejectCall()" style="background:var(--danger); color:white; padding:12px 25px;">Reject</button>
@@ -477,8 +119,7 @@
         <video id="remote-video" autoplay playsinline></video>
         <video id="local-video" autoplay muted playsinline></video>
         <div class="call-actions">
-            <button onclick="toggleCamera()" id="cam-toggle" class="round-btn" style="background:#555;">📷</button>
-            <button onclick="toggleMic()" id="mic-toggle" class="round-btn" style="background:#555;">🎙️</button>
+            <button onclick="toggleCamera()" class="round-btn" style="background:#555;">📷</button>
             <button onclick="endCall()" class="round-btn" style="background:var(--danger);">✖</button>
         </div>
     </div>
@@ -488,47 +129,69 @@
     <script>
         // --- 🟢 আপনার ফায়ারবেস তথ্য এখানে বসান 🟢 ---
         const firebaseConfig = {
-  apiKey: "AIzaSyDCKr5EaLVrDkV4TG00ortCiTWIAo5zgjc",
-  authDomain: "vimo-d453c.firebaseapp.com",
-  databaseURL: "https://vimo-d453c-default-rtdb.firebaseio.com",
-  projectId: "vimo-d453c",
-  storageBucket: "vimo-d453c.firebasestorage.app",
-  messagingSenderId: "258135136638",
-  appId: "1:258135136638:web:2f0e0086213343177bbb2f",
-  measurementId: "G-6WLGSWKVW9"
-};
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
         // -------------------------------------------
 
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
 
+        let isLoginMode = true;
         let currentUser = null;
         let peer = null;
         let activeRecipient = null;
         let currentCall = null;
         let localStream = null;
-        let dataConn = null; // PeerJS Data Connection for direct image sharing
+        let dataConn = null;
 
-        // --- ১. অথেন্টিকেশন ---
-        async function handleAuth(type) {
-            const email = document.getElementById('reg-email').value;
-            const pass = document.getElementById('reg-pass').value;
-            const name = document.getElementById('reg-name').value;
+        // --- Auth Toggle ---
+        function toggleAuthMode() {
+            isLoginMode = !isLoginMode;
+            document.getElementById('auth-header').innerText = isLoginMode ? "Vimo Login" : "Vimo Sign Up";
+            document.getElementById('primary-btn').innerText = isLoginMode ? "Login" : "Create Account";
+            document.getElementById('signup-fields').style.display = isLoginMode ? "none" : "block";
+            document.getElementById('toggle-text').innerText = isLoginMode ? "Don't have an account? Sign Up" : "Already have an account? Login";
+        }
+
+        // --- Auth Process ---
+        async function processAuth() {
+            const email = document.getElementById('auth-email').value;
+            const pass = document.getElementById('auth-pass').value;
+            const name = document.getElementById('auth-name').value;
+
+            if (!email || !pass) return alert("Email and Password are required!");
 
             try {
-                if(type === 'signup') {
-                    const res = await auth.createUserWithEmailAndPassword(email, pass);
-                    await db.ref('users/' + res.user.uid).set({ name, email, uid: res.user.uid, status: 'online' });
-                } else {
+                if (isLoginMode) {
                     await auth.signInWithEmailAndPassword(email, pass);
+                } else {
+                    if (!name) return alert("Full Name is required for Sign Up!");
+                    const res = await auth.createUserWithEmailAndPassword(email, pass);
+                    // ডাটাবেজে ইউজার প্রোফাইল সেভ করা
+                    await db.ref('users/' + res.user.uid).set({
+                        name: name,
+                        email: email,
+                        uid: res.user.uid,
+                        status: 'online'
+                    });
                 }
-            } catch (e) { alert(e.message); }
+            } catch (error) {
+                alert("Error: " + error.message);
+            }
         }
 
         auth.onAuthStateChanged(user => {
-            if(user) {
+            if (user) {
                 currentUser = user;
+                document.getElementById('auth-container').style.display = 'none';
+                document.getElementById('app-container').style.display = 'flex';
                 initApp();
             } else {
                 document.getElementById('auth-container').style.display = 'flex';
@@ -537,58 +200,45 @@
         });
 
         function initApp() {
-            document.getElementById('auth-container').style.display = 'none';
-            document.getElementById('app-container').style.display = 'flex';
-            
-            db.ref('users/' + currentUser.uid).once('value', s => {
-                document.getElementById('my-display-name').innerText = s.val().name;
+            db.ref('users/' + currentUser.uid + '/name').once('value', s => {
+                document.getElementById('display-name-header').innerText = s.val() || "User";
             });
 
-            // PeerJS কানেকশন
             peer = new Peer(currentUser.uid);
+            
+            // অনলাইন স্ট্যাটাস হ্যান্ডেল
+            db.ref('users/' + currentUser.uid).update({ status: 'online' });
+            db.ref('users/' + currentUser.uid + '/status').onDisconnect().set('offline');
 
-            peer.on('open', id => {
-                db.ref('users/' + currentUser.uid).update({ status: 'online' });
-            });
-
-            // ইনকামিং কল সিগন্যাল লিসেনার (ব্যাকগ্রাউন্ড রিংটোন সাপোর্ট)
+            // ইনকামিং কল লিসেনার
             db.ref('signals/' + currentUser.uid).on('value', snap => {
-                const signal = snap.val();
-                if(signal && signal.type === 'offer') {
-                    showRinging(signal);
-                } else if(!signal) {
+                if (snap.val() && snap.val().type === 'offer') {
+                    showRinging(snap.val());
+                } else if (!snap.val()) {
                     stopRinging();
                 }
             });
 
-            // ইনকামিং কল রিসিভ
-            peer.on('call', call => {
-                currentCall = call;
-            });
-
-            // ইনকামিং ডেটা (ইমেজ) লিসেনার
+            peer.on('call', call => { currentCall = call; });
             peer.on('connection', conn => {
-                conn.on('data', data => {
-                    if(data.type === 'image') displayImage(data.blob, 'received');
-                });
+                conn.on('data', data => { if (data.type === 'image') displayImage(data.blob, 'received'); });
             });
 
-            loadUsers();
+            loadUserList();
         }
 
-        // --- ২. ইউজার লিস্ট ও চ্যাট ---
-        function loadUsers() {
+        // --- ইউজার লিস্ট ---
+        function loadUserList() {
             db.ref('users').on('value', snap => {
                 const list = document.getElementById('user-list');
                 list.innerHTML = "";
                 snap.forEach(child => {
-                    if(child.key !== currentUser.uid) {
+                    if (child.key !== currentUser.uid) {
                         const u = child.val();
                         const div = document.createElement('div');
                         div.className = 'user-item';
                         div.innerHTML = `<img class="avatar" src="https://via.placeholder.com/40"> 
-                                        <div style="flex:1"><b>${u.name}</b><br><small>${u.status}</small></div>
-                                        <div class="${u.status === 'online' ? 'status-online' : ''}"></div>`;
+                                        <div><b>${u.name}</b><br><small>${u.status}</small></div>`;
                         div.onclick = () => selectUser(u.uid);
                         list.appendChild(div);
                     }
@@ -599,19 +249,19 @@
         function selectUser(uid) {
             activeRecipient = uid;
             document.getElementById('chat-controls').style.display = 'flex';
-            dataConn = peer.connect(uid); // ইমেজ শেয়ারের জন্য কানেকশন
-            
+            dataConn = peer.connect(uid);
             const chatID = [currentUser.uid, uid].sort().join('_');
+            
             db.ref('messages/' + chatID).off();
             db.ref('messages/' + chatID).on('value', snap => {
                 const box = document.getElementById('messages');
                 box.innerHTML = "";
                 snap.forEach(m => {
-                    const data = m.val();
-                    const d = document.createElement('div');
-                    d.className = `msg ${data.sender === currentUser.uid ? 'sent' : 'received'}`;
-                    d.innerText = data.text;
-                    box.appendChild(d);
+                    const d = m.val();
+                    const div = document.createElement('div');
+                    div.className = `msg ${d.sender === currentUser.uid ? 'sent' : 'received'}`;
+                    div.innerText = d.text;
+                    box.appendChild(div);
                 });
                 box.scrollTop = box.scrollHeight;
             });
@@ -619,77 +269,59 @@
 
         function sendText() {
             const text = document.getElementById('msg-input').value;
-            if(!text || !activeRecipient) return;
+            if (!text || !activeRecipient) return;
             const chatID = [currentUser.uid, activeRecipient].sort().join('_');
-            db.ref('messages/' + chatID).push({ sender: currentUser.uid, text: text, time: Date.now() });
+            db.ref('messages/' + chatID).push({ sender: currentUser.uid, text: text });
             document.getElementById('msg-input').value = "";
         }
 
-        // --- ৩. ডাইরেক্ট ইমেজ শেয়ার (PeerJS - No Firebase Cost) ---
         function shareFile(input) {
             const file = input.files[0];
-            if(!file || !dataConn) return;
-
+            if (!file || !dataConn) return;
             const reader = new FileReader();
             reader.onload = (e) => {
-                const blob = e.target.result;
-                dataConn.send({ type: 'image', blob: blob });
-                displayImage(blob, 'sent');
+                dataConn.send({ type: 'image', blob: e.target.result });
+                displayImage(e.target.result, 'sent');
             };
             reader.readAsDataURL(file);
         }
 
         function displayImage(blob, type) {
-            const box = document.getElementById('messages');
             const div = document.createElement('div');
             div.className = `msg ${type}`;
-            div.innerHTML = `<img src="${blob}" onclick="window.open(this.src)">`;
-            box.appendChild(div);
-            box.scrollTop = box.scrollHeight;
+            div.innerHTML = `<img src="${blob}" style="width:100%" onclick="window.open(this.src)">`;
+            document.getElementById('messages').appendChild(div);
+            document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
         }
 
-        // --- ৪. কলিং সিস্টেম ও রিংটোন ---
+        // --- কলিং সিস্টেম ---
         async function startCall(mode) {
-            localStream = await navigator.mediaDevices.getUserMedia({ 
-                video: true, 
-                audio: true 
-            });
-            
-            // অডিও মোড হলে ক্যামেরা বন্ধ রাখা
-            if(mode === 'audio') localStream.getVideoTracks()[0].enabled = false;
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            if (mode === 'audio') localStream.getVideoTracks()[0].enabled = false;
 
             db.ref('signals/' + activeRecipient).set({
-                type: 'offer',
-                from: currentUser.uid,
-                fromName: document.getElementById('my-display-name').innerText,
-                mode: mode
+                type: 'offer', from: currentUser.uid, 
+                fromName: document.getElementById('display-name-header').innerText, mode: mode
             });
 
             const call = peer.call(activeRecipient, localStream);
             handleCallUI(call);
         }
 
-        function showRinging(signal) {
+        function showRinging(s) {
             document.getElementById('ring-audio').play();
             document.getElementById('ringing-ui').style.display = 'block';
-            document.getElementById('caller-name').innerText = signal.fromName;
-            document.getElementById('call-type').innerText = signal.mode === 'video' ? "Video Calling..." : "Audio Calling...";
+            document.getElementById('caller-name').innerText = s.fromName + " is calling...";
         }
 
         function stopRinging() {
             document.getElementById('ring-audio').pause();
-            document.getElementById('ring-audio').currentTime = 0;
             document.getElementById('ringing-ui').style.display = 'none';
         }
 
         async function acceptCall() {
             stopRinging();
             localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            
-            db.ref('signals/' + currentUser.uid).once('value', s => {
-                if(s.val().mode === 'audio') localStream.getVideoTracks()[0].enabled = false;
-            });
-
             currentCall.answer(localStream);
             handleCallUI(currentCall);
             db.ref('signals/' + currentUser.uid).remove();
@@ -701,43 +333,19 @@
         }
 
         function handleCallUI(call) {
-            currentCall = call;
             document.getElementById('call-overlay').style.display = 'flex';
             document.getElementById('local-video').srcObject = localStream;
-            
-            call.on('stream', remoteStream => {
-                document.getElementById('remote-video').srcObject = remoteStream;
-            });
-
-            call.on('close', () => endCall());
-        }
-
-        // কল কন্ট্রোলস
-        function toggleCamera() {
-            const enabled = localStream.getVideoTracks()[0].enabled;
-            localStream.getVideoTracks()[0].enabled = !enabled;
-            document.getElementById('cam-toggle').style.background = !enabled ? "#555" : "#333";
-        }
-
-        function toggleMic() {
-            const enabled = localStream.getAudioTracks()[0].enabled;
-            localStream.getAudioTracks()[0].enabled = !enabled;
-            document.getElementById('mic-toggle').style.background = !enabled ? "#555" : "#333";
+            call.on('stream', s => { document.getElementById('remote-video').srcObject = s; });
         }
 
         function endCall() {
-            if(currentCall) currentCall.close();
-            if(localStream) localStream.getTracks().forEach(track => track.stop());
-            db.ref('signals/' + activeRecipient).remove();
-            document.getElementById('call-overlay').style.display = 'none';
-            location.reload();
+            location.reload(); // সিম্পল রিসেট
         }
 
         function logout() {
             db.ref('users/' + currentUser.uid).update({ status: 'offline' });
             auth.signOut();
         }
-
     </script>
 </body>
 </html>
