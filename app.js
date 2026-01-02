@@ -18,44 +18,47 @@ const firebaseConfig = {
 };
 const vapidKey = "BFjas7nnmZEl0lTwcVDLs5klTCnpB86eqfj_x7Cg-tpJW6HMsEeZnvyCj9u3J-pLr0vfpO1CLp3wiXH6k3VNXEs";
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getDatabase(app);
-const storage = getStorage(app);
-const messaging = getMessaging(app);
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.database();
+const storage = firebase.storage();
+const messaging = firebase.messaging();
 
-let currentUser, myPeer, activeChatID, currentCall, localStream, dataConn;
-const ringtone = document.getElementById('ringtone');
-const dialtone = document.getElementById('dialtone');
+let currentUser, myPeer, activeChatID, currentCall, localStream, dataConn, isSignup = false;
 
-// --- ১. অথেন্টিকেশন ---
-document.getElementById('auth-btn').onclick = async () => {
+// ১. অথেন্টিকেশন (Signup/Login)
+document.getElementById('auth-toggle').onclick = () => {
+    isSignup = !isSignup;
+    document.getElementById('signup-fields').classList.toggle('hidden');
+    document.getElementById('btn-auth-submit').innerText = isSignup ? "Sign Up" : "Login";
+};
+
+document.getElementById('btn-auth-submit').onclick = async () => {
     const email = document.getElementById('auth-email').value;
     const pass = document.getElementById('auth-pass').value;
     const name = document.getElementById('auth-name').value;
-    const avatarFile = document.getElementById('auth-avatar').files[0];
-    const isSignup = !document.getElementById('signup-fields').classList.contains('hidden');
+    const avatar = document.getElementById('auth-avatar').files[0];
 
     try {
-        if (isSignup) {
-            const res = await createUserWithEmailAndPassword(auth, email, pass);
+        if(isSignup) {
+            const res = await auth.createUserWithEmailAndPassword(email, pass);
             let url = "";
-            if(avatarFile) {
-                const imgRef = sRef(storage, `avatars/${res.user.uid}`);
-                await uploadBytes(imgRef, avatarFile);
-                url = await getDownloadURL(imgRef);
+            if(avatar) {
+                const ref = storage.ref(`avatars/${res.user.uid}`);
+                await ref.put(avatar);
+                url = await ref.getDownloadURL();
             }
-            await set(ref(db, `users/${res.user.uid}`), { name, email, avatar: url, uid: res.user.uid, status: 'online' });
+            await db.ref('users/' + res.user.uid).set({ name, email, avatar: url, uid: res.user.uid, status: 'online' });
         } else {
-            await signInWithEmailAndPassword(auth, email, pass);
+            await auth.signInWithEmailAndPassword(email, pass);
         }
-    } catch (e) { alert(e.message); }
+    } catch(e) { alert(e.message); }
 };
 
-document.getElementById('google-btn').onclick = () => signInWithPopup(auth, new GoogleAuthProvider());
+document.getElementById('btn-google').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
 
-onAuthStateChanged(auth, user => {
-    if (user) {
+auth.onAuthStateChanged(user => {
+    if(user) {
         currentUser = user;
         document.getElementById('auth-container').classList.add('hidden');
         document.getElementById('app-container').classList.remove('hidden');
@@ -66,78 +69,71 @@ onAuthStateChanged(auth, user => {
     }
 });
 
-// --- ২. মেইন অ্যাপ লজিক ---
-async function initApp() {
+// ২. মেইন অ্যাপ লজিক
+function initApp() {
     myPeer = new Peer(currentUser.uid);
-    const userRef = ref(db, `users/${currentUser.uid}`);
-    update(userRef, { status: 'online' });
-    onDisconnect(userRef).update({ status: 'offline', last_seen: serverTimestamp() });
+    const userRef = db.ref('users/' + currentUser.uid);
+    userRef.update({ status: 'online' });
+    userRef.onDisconnect().update({ status: 'offline', last_seen: firebase.database.ServerValue.TIMESTAMP });
 
-    onValue(userRef, s => {
-        if(s.exists()){
-            document.getElementById('my-display-name').innerText = s.val().name;
-            document.getElementById('my-avatar').src = s.val().avatar || 'https://via.placeholder.com/40';
-        }
+    userRef.on('value', s => {
+        document.getElementById('my-display-name').innerText = s.val().name;
+        document.getElementById('my-avatar').src = s.val().avatar || 'https://via.placeholder.com/40';
     });
 
-    // কল সিগন্যাল লিসেনার
-    onValue(ref(db, `signals/${currentUser.uid}`), snap => {
+    // কল লিসেনার
+    db.ref('signals/' + currentUser.uid).on('value', snap => {
         const signal = snap.val();
-        if (signal) {
-            if (signal.status === 'dialing') {
-                ringtone.play();
+        if(signal) {
+            if(signal.status === 'dialing') {
+                document.getElementById('ringtone').play();
                 document.getElementById('incoming-modal').classList.remove('hidden');
                 document.getElementById('caller-name').innerText = signal.fromName;
-            } else if (signal.status === 'accepted') {
-                dialtone.pause();
-            } else if (signal.status === 'ended') {
-                closeCallUI();
+            } else if(signal.status === 'accepted') {
+                document.getElementById('dialtone').pause();
+            } else if(signal.status === 'ended') {
+                cleanupCall();
             }
         } else {
             document.getElementById('incoming-modal').classList.add('hidden');
-            ringtone.pause();
+            document.getElementById('ringtone').pause();
         }
     });
 
     myPeer.on('call', call => { currentCall = call; });
     myPeer.on('connection', conn => {
-        conn.on('data', data => {
-            if(data.type === 'img') appendMsg({ type: 'img', blob: data.blob, sender: 'received' });
-        });
+        conn.on('data', data => { if(data.type === 'img') appendMsg({type:'img', blob:data.blob, sender:'rec'}); });
     });
 
-    loadUsers();
+    loadContacts();
     setupFCM();
 }
 
-// --- ৩. চ্যাট ও ইমেজ শেয়ার (P2P) ---
-function loadUsers() {
-    onValue(ref(db, 'users'), snap => {
+// ৩. চ্যাট ও ইমেজ (P2P)
+function loadContacts() {
+    db.ref('users').on('value', snap => {
         const list = document.getElementById('user-list');
         list.innerHTML = "";
         snap.forEach(u => {
-            if (u.key !== currentUser.uid) {
+            if(u.key !== currentUser.uid) {
                 const d = u.val();
+                const status = d.status === 'online' ? '<small style="color:green">Online</small>' : '<small>Offline</small>';
                 const div = document.createElement('div');
                 div.className = 'user-item';
-                div.innerHTML = `<img class="avatar" src="${d.avatar || 'https://via.placeholder.com/45'}"> 
-                <div><b>${d.name}</b><br><small>${d.status === 'online' ? 'Online' : 'Offline'}</small></div>`;
-                div.onclick = () => selectUser(d.uid, d.name);
+                div.innerHTML = `<img class="avatar" src="${d.avatar || 'https://via.placeholder.com/40'}"> <div><b>${d.name}</b><br>${status}</div>`;
+                div.onclick = () => selectChat(d.uid);
                 list.appendChild(div);
             }
         });
     });
 }
 
-function selectUser(uid, name) {
+function selectChat(uid) {
     activeChatID = uid;
     document.getElementById('chat-controls').classList.remove('hidden');
-    document.getElementById('chat-header').classList.remove('hidden');
-    document.getElementById('active-user-name').innerText = name;
     dataConn = myPeer.connect(uid);
-
-    const roomID = [currentUser.uid, uid].sort().join('_');
-    onValue(ref(db, `msgs/${roomID}`), s => {
+    const room = [currentUser.uid, uid].sort().join('_');
+    db.ref('msgs/' + room).on('value', s => {
         const box = document.getElementById('messages');
         box.innerHTML = "";
         s.forEach(m => appendMsg(m.val()));
@@ -145,132 +141,78 @@ function selectUser(uid, name) {
     });
 }
 
-function sendText() {
-    const text = document.getElementById('msg-input').value;
-    if(!text) return;
-    const roomID = [currentUser.uid, activeChatID].sort().join('_');
-    push(ref(db, `msgs/${roomID}`), { sender: currentUser.uid, text, type: 'text' });
-    document.getElementById('msg-input').value = "";
-}
-
 function appendMsg(d) {
     const box = document.getElementById('messages');
     const div = document.createElement('div');
     div.className = `msg ${d.sender === currentUser.uid ? 'sent' : 'received'}`;
     if(d.type === 'text') div.innerText = d.text;
-    else if(d.type === 'img') div.innerHTML = `<img src="${d.blob}"><br><a href="${d.blob}" download="vimo_img.png">Download</a>`;
+    else div.innerHTML = `<img src="${d.blob}"><br><a href="${d.blob}" download="vimo.png">Download</a>`;
     box.appendChild(div);
 }
 
-document.getElementById('img-btn').onclick = () => document.getElementById('img-input').click();
-document.getElementById('img-input').onchange = (e) => {
-    const file = e.target.files[0];
-    const reader = new FileReader();
-    reader.onload = () => {
-        const blob = reader.result;
-        dataConn.send({ type: 'img', blob });
-        appendMsg({ sender: currentUser.uid, type: 'img', blob });
-    };
-    reader.readAsDataURL(file);
+document.getElementById('send-btn').onclick = () => {
+    const text = document.getElementById('msg-input').value;
+    const room = [currentUser.uid, activeChatID].sort().join('_');
+    db.ref('msgs/' + room).push({ sender: currentUser.uid, text, type: 'text' });
+    document.getElementById('msg-input').value = "";
 };
 
-// --- ৪. কলিং সিস্টেম (Sync Fix) ---
-async function makeCall(mode) {
+document.getElementById('img-btn').onclick = () => document.getElementById('img-input').click();
+document.getElementById('img-input').onchange = (e) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+        dataConn.send({ type: 'img', blob: reader.result });
+        appendMsg({ sender: currentUser.uid, type: 'img', blob: reader.result });
+    };
+    reader.readAsDataURL(e.target.files[0]);
+};
+
+// ৪. কলিং সিস্টেম
+async function startCall(mode) {
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
     if(mode === 'audio') localStream.getVideoTracks()[0].enabled = false;
-    
-    dialtone.play();
-    set(ref(db, `signals/${activeChatID}`), { 
-        status: 'dialing', from: currentUser.uid, 
-        fromName: document.getElementById('my-display-name').innerText, mode 
-    });
-
+    document.getElementById('dialtone').play();
+    db.ref('signals/' + activeChatID).set({ status: 'dialing', from: currentUser.uid, fromName: document.getElementById('my-display-name').innerText, mode });
     const call = myPeer.call(activeChatID, localStream);
-    setupCallUI(call);
+    handleCallUI(call);
 }
 
 document.getElementById('accept-btn').onclick = async () => {
-    ringtone.pause();
+    document.getElementById('ringtone').pause();
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    update(ref(db, `signals/${currentUser.uid}`), { status: 'accepted' });
+    db.ref('signals/' + currentUser.uid).update({ status: 'accepted' });
     currentCall.answer(localStream);
-    setupCallUI(currentCall);
+    handleCallUI(currentCall);
 };
 
-function setupCallUI(call) {
+function handleCallUI(call) {
     currentCall = call;
     document.getElementById('call-overlay').classList.remove('hidden');
     document.getElementById('local-video').srcObject = localStream;
     call.on('stream', s => document.getElementById('remote-video').srcObject = s);
-    call.on('close', closeCallUI);
 }
 
-function closeCallUI() {
+function cleanupCall() {
     if(localStream) localStream.getTracks().forEach(t => t.stop());
     document.getElementById('call-overlay').classList.add('hidden');
-    document.getElementById('incoming-modal').classList.add('hidden');
-    ringtone.pause(); dialtone.pause();
+    document.getElementById('ringtone').pause();
+    document.getElementById('dialtone').pause();
 }
 
 document.getElementById('end-call-btn').onclick = () => {
-    set(ref(db, `signals/${activeChatID}`), { status: 'ended' });
-    set(ref(db, `signals/${currentUser.uid}`), { status: 'ended' });
-    closeCallUI();
+    db.ref('signals/' + activeChatID).set({ status: 'ended' });
+    db.ref('signals/' + currentUser.uid).set({ status: 'ended' });
+    cleanupCall();
 };
 
-// --- ৫. FCM নোটিফিকেশন ---
+// ৫. FCM নোটিফিকেশন
 async function setupFCM() {
     try {
-        const token = await getToken(messaging, { vapidKey });
-        if(token) update(ref(db, `users/${currentUser.uid}`), { fcmToken: token });
-    } catch (e) { console.log(e); }
-}
-// 🔴 এই সম্পূর্ণ ফাংশনটি ফাইলের শেষে যোগ করুন:
-async function setupFCM() {
-    try {
-        // ১. নোটিফিকেশন পারমিশন চাওয়া
-        const permission = await Notification.requestPermission();
-        
-        if (permission === 'granted') {
-            // ২. সার্ভিস ওয়ার্কার রেজিস্ট্রেশন এবং টোকেন সংগ্রহ
-            const token = await getToken(messaging, { 
-                vapidKey: vapidKey 
-            });
-
-            if (token) {
-                console.log("FCM Token রিসিভ হয়েছে:", token);
-                // ৩. ডাটাবেজে ইউজারের প্রোফাইলে টোকেন আপডেট করা
-                await update(ref(db, `users/${currentUser.uid}`), { fcmToken: token });
-            }
-        }
-    } catch (error) {
-        console.error("FCM সেটাপ করতে সমস্যা হয়েছে:", error);
-    }
+        const token = await messaging.getToken({ vapidKey });
+        db.ref('users/' + currentUser.uid).update({ fcmToken: token });
+    } catch(e) {}
 }
 
-// ৪. অ্যাপ সামনে খোলা থাকলে মেসেজ রিসিভ করার লজিক
-onMessage(messaging, (payload) => {
-    console.log('নোটিফিকেশন রিসিভ হয়েছে (Foreground): ', payload);
-    // এখানে চাইলে ইউজারকে কোনো মেসেজ বা এলার্ট দেখাতে পারেন
-});
-// কন্ট্রোলস
-document.getElementById('send-btn').onclick = sendText;
-document.getElementById('video-call-btn').onclick = () => makeCall('video');
-document.getElementById('audio-call-btn').onclick = () => makeCall('audio');
-document.getElementById('logout-btn').onclick = () => signOut(auth);
-document.getElementById('reject-btn').onclick = () => {
-    remove(ref(db, `signals/${currentUser.uid}`));
-    ringtone.pause();
-};
-document.getElementById('toggle-cam').onclick = () => {
-    const t = localStream.getVideoTracks()[0];
-    t.enabled = !t.enabled;
-};
-document.getElementById('toggle-mic').onclick = () => {
-    const t = localStream.getAudioTracks()[0];
-    t.enabled = !t.enabled;
-};
-document.getElementById('auth-toggle').onclick = () => {
-    document.getElementById('signup-fields').classList.toggle('hidden');
-    document.getElementById('auth-btn').innerText = document.getElementById('signup-fields').classList.contains('hidden') ? "Login" : "Sign Up";
-};
+document.getElementById('audio-call-btn').onclick = () => startCall('audio');
+document.getElementById('video-call-btn').onclick = () => startCall('video');
+document.getElementById('logout-btn').onclick = () => auth.signOut();
