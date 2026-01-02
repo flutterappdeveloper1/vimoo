@@ -3,9 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vimo </title>
+    <title>Vimo</title>
     <link rel="icon" href="icon.png">
     <link rel="stylesheet" href="style.css">
+    
+    <!-- Firebase SDKs (v8 Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
@@ -17,13 +24,12 @@
             <h2>Vimo</h2>
             <div id="signup-fields" class="hidden">
                 <input type="text" id="auth-name" placeholder="আপনার পূর্ণ নাম">
-                <input type="file" id="auth-avatar" accept="image/*">
-                <p style="font-size: 11px;">প্রোফাইল ছবি সিলেক্ট করুন</p>
+                <label class="file-label">প্রোফাইল ছবি সিলেক্ট করুন <input type="file" id="auth-avatar" accept="image/*" hidden></label>
             </div>
             <input type="email" id="auth-email" placeholder="ইমেইল">
             <input type="password" id="auth-pass" placeholder="পাসওয়ার্ড">
-            <button class="btn btn-main" id="auth-btn">Login</button>
-            <button class="btn btn-google" id="google-btn">Google Login</button>
+            <button class="btn btn-main" id="btn-auth-submit">Login</button>
+            <button class="btn btn-google" id="btn-google">Google Login</button>
             <p id="auth-toggle">নতুন অ্যাকাউন্ট তৈরি করুন</p>
         </div>
     </div>
@@ -31,13 +37,11 @@
     <!-- ২. মেইন অ্যাপ ইন্টারফেস -->
     <div id="app-container" class="hidden">
         <header>
-            <div class="user-profile" id="open-profile">
+            <div class="user-profile">
                 <img id="my-avatar" class="avatar" src="https://via.placeholder.com/40">
                 <b id="my-display-name">User</b>
             </div>
-            <div class="header-btns">
-                <button id="logout-btn">Logout</button>
-            </div>
+            <button id="logout-btn" class="btn-danger">Logout</button>
         </header>
 
         <div class="main-layout">
@@ -47,10 +51,6 @@
             </aside>
 
             <main id="chat-window">
-                <div id="chat-header" class="hidden">
-                    <span id="active-user-name">Friend</span>
-                    <small id="active-user-status"></small>
-                </div>
                 <div id="messages"></div>
                 <div id="chat-controls" class="input-bar hidden">
                     <button id="img-btn">🖼️</button>
@@ -58,13 +58,13 @@
                     <button id="audio-call-btn">📞</button>
                     <button id="video-call-btn">📹</button>
                     <input type="text" id="msg-input" placeholder="Type a message...">
-                    <button id="send-btn">Send</button>
+                    <button id="send-btn" class="btn-main">Send</button>
                 </div>
             </main>
         </div>
     </div>
 
-    <!-- ৩. কলিং UI (রিংটোন ও কন্ট্রোলসহ) -->
+    <!-- ৩. কলিং মোডাল -->
     <div id="incoming-modal" class="modal hidden">
         <h3 id="caller-name">Incoming Call</h3>
         <div class="modal-btns">
@@ -83,10 +83,9 @@
         </div>
     </div>
 
-    <!-- অডিও ফাইল -->
     <audio id="ringtone" src="ringtone.mp3" loop></audio>
     <audio id="dialtone" src="dialtone.mp3" loop></audio>
 
-    <script type="module" src="app.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
