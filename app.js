@@ -24,15 +24,16 @@ import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/11.1.
 
 // --- 🟢 আপনার Firebase Config এখানে বসান 🟢 ---
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-    projectId: "YOUR_PROJECT",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDCKr5EaLVrDkV4TG00ortCiTWIAo5zgjc",
+  authDomain: "vimo-d453c.firebaseapp.com",
+  databaseURL: "https://vimo-d453c-default-rtdb.firebaseio.com",
+  projectId: "vimo-d453c",
+  storageBucket: "vimo-d453c.firebasestorage.app",
+  messagingSenderId: "258135136638",
+  appId: "1:258135136638:web:2f0e0086213343177bbb2f",
+  measurementId: "G-6WLGSWKVW9"
 };
-const vapidKey = "YOUR_VAPID_KEY";
+const vapidKey = "BFjas7nnmZEl0lTwcVDLs5klTCnpB86eqfj_x7Cg-tpJW6HMsEeZnvyCj9u3J-pLr0vfpO1CLp3wiXH6k3VNXEs";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
