@@ -1,3 +1,21 @@
+async function requestNotificationPermission() {
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            // এইgetToken ফাংশনটি আপনার vapidKey ব্যবহার করবে
+            const token = await getToken(messaging, { vapidKey: vapidKey });
+            if (token) {
+                console.log("FCM Token:", token);
+                // এই টোকেনটি ডাটাবেজে ইউজারের আন্ডারে সেভ করুন
+                await update(ref(db, 'users/' + currentUser.uid), { fcmToken: token });
+            }
+        } else {
+            console.log("Notification permission denied.");
+        }
+    } catch (err) {
+        console.log("An error occurred while retrieving token:", err);
+    }
+}
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 import { getDatabase, ref, set, update, onValue, push, onDisconnect, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
