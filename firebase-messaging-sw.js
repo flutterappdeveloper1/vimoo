@@ -12,7 +12,7 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
-    self.registration.showNotification("Vimo Pro Call", {
+    self.registration.showNotification("Vimo  Call", {
         body: payload.data.fromName + " is calling you!",
         icon: "/icon.png",
         data: { url: self.location.origin }
