@@ -15,6 +15,9 @@ const firebaseConfig = {
   measurementId: "G-6WLGSWKVW9"
 };
 
+// 🔴 এইখানে আপনার VAPID Key বসান 🔴
+const vapidKey = "BFjas7nnmZEl0lTwcVDLs5klTCnpB86eqfj_x7Cg-tpJW6HMsEeZnvyCj9u3J-pLr0vfpO1CLp3wiXH6k3VNXEs"; 
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
