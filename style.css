@@ -1,42 +1,34 @@
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #f0f2f5; font-family: sans-serif; }
+:root { --primary: #0084ff; --success: #28a745; --danger: #dc3545; --bg: #f0f2f5; }
+body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
 .hidden { display: none !important; }
 
 /* Auth */
-#auth-container { height: 100%; display: flex; align-items: center; justify-content: center; background: #0084ff; position: fixed; width: 100%; z-index: 9999; }
-.auth-card { background: white; padding: 25px; border-radius: 15px; width: 90%; max-width: 350px; text-align: center; }
-input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
-.btn { width: 100%; padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; margin-top: 10px; }
-.btn-main { background: #0084ff; color: white; }
-.btn-success { background: #28a745; color: white; }
-.btn-danger { background: #dc3545; color: white; }
+#auth-container { height: 100%; display: flex; align-items: center; justify-content: center; background: var(--primary); position: fixed; width: 100%; z-index: 9999; }
+.auth-card { background: white; padding: 30px; border-radius: 20px; width: 320px; text-align: center; }
+input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; }
+.btn { width: 100%; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+.btn-main { background: var(--primary); color: white; }
 
-/* Layout */
-#app-container { display: flex; flex-direction: column; height: 100vh; }
+/* Main App */
+#app-container { height: 100vh; display: flex; flex-direction: column; }
 header { height: 60px; background: white; padding: 0 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; }
 .main-layout { display: flex; flex: 1; overflow: hidden; }
-#sidebar { width: 30%; max-width: 300px; background: white; border-right: 1px solid #ddd; overflow-y: auto; }
+#sidebar { width: 300px; background: white; border-right: 1px solid #ddd; overflow-y: auto; }
 #chat-window { flex: 1; display: flex; flex-direction: column; background: #e5ddd5; }
-#messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+#messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
 
-/* Messages */
-.msg { padding: 10px; border-radius: 12px; max-width: 75%; font-size: 15px; word-wrap: break-word; }
-.sent { background: #dcf8c6; align-self: flex-end; }
-.received { background: white; align-self: flex-start; }
-.msg img { max-width: 100%; border-radius: 8px; margin-top: 5px; }
-
-/* Calling */
+/* Call UI */
 #call-overlay { position: fixed; inset: 0; background: black; z-index: 5000; display: flex; justify-content: center; }
 #remote-video { width: 100%; height: 100%; object-fit: cover; }
 #local-video { width: 100px; height: 140px; position: absolute; top: 20px; right: 20px; border: 2px solid white; border-radius: 10px; }
 .call-controls { position: absolute; bottom: 40px; display: flex; gap: 20px; }
-.round-btn { width: 60px; height: 60px; border-radius: 50%; border: none; font-size: 24px; cursor: pointer; background: rgba(255,255,255,0.2); color: white; }
+.round-btn { width: 60px; height: 60px; border-radius: 50%; background: rgba(255,255,255,0.2); border: none; font-size: 24px; color: white; cursor: pointer; }
 
-/* User Item */
+/* Contact List */
 .user-item { padding: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; border-bottom: 1px solid #f1f1f1; }
-.avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; }
+.avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; background: #eee; }
+.msg { padding: 10px; border-radius: 12px; max-width: 75%; }
+.sent { background: #dcf8c6; align-self: flex-end; }
+.received { background: white; align-self: flex-start; }
 
-@media (max-width: 600px) {
-    #sidebar { width: 70px; }
-    #sidebar b, #sidebar small { display: none; }
-}
+@media (max-width: 600px) { #sidebar { width: 80px; } #sidebar b, #sidebar small { display: none; } }
