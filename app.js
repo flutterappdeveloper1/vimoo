@@ -1,26 +1,9 @@
-async function requestNotificationPermission() {
-    try {
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-            // এইgetToken ফাংশনটি আপনার vapidKey ব্যবহার করবে
-            const token = await getToken(messaging, { vapidKey: vapidKey });
-            if (token) {
-                console.log("FCM Token:", token);
-                // এই টোকেনটি ডাটাবেজে ইউজারের আন্ডারে সেভ করুন
-                await update(ref(db, 'users/' + currentUser.uid), { fcmToken: token });
-            }
-        } else {
-            console.log("Notification permission denied.");
-        }
-    } catch (err) {
-        console.log("An error occurred while retrieving token:", err);
-    }
-}
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 import { getDatabase, ref, set, update, onValue, push, onDisconnect, serverTimestamp, remove } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-storage.js";
-import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-messaging.js";
+import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-messaging.js";
 
 // --- 🟢 আপনার Firebase Config এখানে বসান 🟢 ---
 const firebaseConfig = {
@@ -242,7 +225,34 @@ async function setupFCM() {
         if(token) update(ref(db, `users/${currentUser.uid}`), { fcmToken: token });
     } catch (e) { console.log(e); }
 }
+// 🔴 এই সম্পূর্ণ ফাংশনটি ফাইলের শেষে যোগ করুন:
+async function setupFCM() {
+    try {
+        // ১. নোটিফিকেশন পারমিশন চাওয়া
+        const permission = await Notification.requestPermission();
+        
+        if (permission === 'granted') {
+            // ২. সার্ভিস ওয়ার্কার রেজিস্ট্রেশন এবং টোকেন সংগ্রহ
+            const token = await getToken(messaging, { 
+                vapidKey: vapidKey 
+            });
 
+            if (token) {
+                console.log("FCM Token রিসিভ হয়েছে:", token);
+                // ৩. ডাটাবেজে ইউজারের প্রোফাইলে টোকেন আপডেট করা
+                await update(ref(db, `users/${currentUser.uid}`), { fcmToken: token });
+            }
+        }
+    } catch (error) {
+        console.error("FCM সেটাপ করতে সমস্যা হয়েছে:", error);
+    }
+}
+
+// ৪. অ্যাপ সামনে খোলা থাকলে মেসেজ রিসিভ করার লজিক
+onMessage(messaging, (payload) => {
+    console.log('নোটিফিকেশন রিসিভ হয়েছে (Foreground): ', payload);
+    // এখানে চাইলে ইউজারকে কোনো মেসেজ বা এলার্ট দেখাতে পারেন
+});
 // কন্ট্রোলস
 document.getElementById('send-btn').onclick = sendText;
 document.getElementById('video-call-btn').onclick = () => makeCall('video');
