@@ -11,26 +11,10 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// ব্যাকগ্রাউন্ড নোটিফিকেশন হ্যান্ডেলার
 messaging.onBackgroundMessage((payload) => {
-    console.log('Background Message:', payload);
-
-    const notificationTitle = payload.data.title || "Vimo Pro Call";
-    const notificationOptions = {
-        body: payload.data.body || "Incoming call from a friend!",
-        icon: '/icon.png', // আপনার আইকন
-        tag: 'call-notification',
-        renotify: true,
-        data: { url: self.location.origin } 
-    };
-
-    return self.registration.showNotification(notificationTitle, notificationOptions);
-});
-
-// নোটিফিকেশনে ক্লিক করলে অ্যাপ ওপেন করা
-self.addEventListener('notificationclick', function(event) {
-    event.notification.close();
-    event.waitUntil(
-        clients.openWindow(event.notification.data.url)
-    );
+    self.registration.showNotification("Vimo Pro Call", {
+        body: payload.data.fromName + " is calling you!",
+        icon: "/icon.png",
+        data: { url: self.location.origin }
+    });
 });
